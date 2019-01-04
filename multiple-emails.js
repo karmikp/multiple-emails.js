@@ -5,10 +5,13 @@
 		// Default options
 		var defaults = {
 			checkDupEmail: true,
-			theme: "Bootstrap",
+			theme: "jQuery",
 			position: "top",
-			placeholder: ""
+			placeholder: "",
+			maxEmailsAllowed: 5
 		};
+		
+		var regexpForCharDelimiters = new RegExp('.+[;,\\s]$', 'i');
 		
 		// Merge send options with defaults
 		var settings = $.extend( {}, defaults, options );
@@ -21,9 +24,9 @@
 		else if (settings.theme.toLowerCase() == "SemanticUI".toLowerCase() || settings.theme.toLowerCase() == "Semantic-UI".toLowerCase() || settings.theme.toLowerCase() == "Semantic UI".toLowerCase()) {
 			deleteIconHTML = '<a href="#" class="multiple_emails-close" title="Remove"><i class="remove icon"></i></a>';
 		}
-		else if (settings.theme.toLowerCase() == "Basic".toLowerCase()) {
-			//Default which you should use if you don't use Bootstrap, SemanticUI, or other CSS frameworks
-			deleteIconHTML = '<a href="#" class="multiple_emails-close" title="Remove"><i class="basicdeleteicon">Remove</i></a>';
+		else if (settings.theme.toLowerCase() == "jQuery".toLowerCase()) {
+		    //Default jQuery , which you should use if you don't use Bootstrap, SemanticUI, or other CSS frameworks
+		    deleteIconHTML = '<a href="#" class="multiple_emails-close" title="X"><span class="ui-icon ui-icon-closethick" style="background-position: -99px -129px;"></span></a>';
 		}
 		
 		return this.each(function() {
@@ -41,7 +44,7 @@
 				});
 			}
 			
-			var $input = $('<input type="text" class="multiple_emails-input text-left" placeholder="' + settings.placeholder +'"/>').on('keyup', function(e) { // input
+			var $input = $('<input type="text" class="multiple_emails-input text-left" placeholder="' + settings.placeholder + '"/>').on('keydown', function(e) { // input
 				$(this).removeClass('multiple_emails-error');
 				var input_length = $(this).val().length;
 				
@@ -51,12 +54,12 @@
 				}
 				else if(e.which){ // Netscape/Firefox/Opera					
 					keynum = e.which;
-                }
+                		}
 				
 				//if(event.which == 8 && input_length == 0) { $list.find('li').last().remove(); } //Removes last item on backspace with no input
 				
 				// Supported key press is tab, enter, space or comma, there is no support for semi-colon since the keyCode differs in various browsers
-				if(keynum == 9 || keynum == 32 || keynum == 188) { 
+				if(keynum == 9 || keynum == 32 || keynum == 188 || IsEndingWithDelimiter(input_str)) { 
 					display_email($(this), settings.checkDupEmail);
 				}
 				else if (keynum == 13) {
@@ -91,11 +94,28 @@
 				
 				//Remove space, comma and semi-colon from beginning and end of string
 				//Does not remove inside the string as the email will need to be tokenized using space, comma and semi-colon
-				var arr = t.val().trim().replace(/^,|,$/g , '').replace(/^;|;$/g , '');
+				var arr = t.val().toLowerCase().trim().replace(/^,|,$/g , '').replace(/^;|;$/g , '');
 				//Remove the double quote
 				arr = arr.replace(/"/g,"");
 				//Split the string into an array, with the space, comma, and semi-colon as the separator
 				arr = arr.split(/[\s,;]+/);
+				
+				//Multi emails pasted in textbox
+				if (arr.length > settings.maxEmailsAllowed - 1)
+				{ arr.length = settings.maxEmailsAllowed; }
+				//Pre existing emails added previously in the list
+				if ($list.children().length > settings.maxEmailsAllowed - 1)
+				{ arr.length = 0; }
+				//Before going further, check duplicates and remove duplicate emails from copy pasted Text
+				arr = arr.reduce((result, element) => {
+					var normalize = function(x) { return typeof x === 'string' ? x.toLowerCase() : x; };
+
+					var normalizedElement = normalize(element);
+					if (result.every(otherElement => normalize(otherElement) !== normalizedElement))
+					  result.push(element);
+
+					return result;
+				  }, []);
 				
 				var errorEmails = new Array(); //New array to contain the errors
 				
@@ -106,9 +126,9 @@
 					if ( dupEmailCheck === true && $orig.val().indexOf(arr[i]) != -1 ) {
 				        if (arr[i] && arr[i].length > 0) {
 							new function () {
-								var existingElement = $list.find('.email_name[data-email=' + arr[i].toLowerCase().replace('.', '\\.').replace('@', '\\@') + ']');
-								existingElement.css('font-weight', 'bold');
-								setTimeout(function() { existingElement.css('font-weight', ''); }, 1500);
+								var existingElement = $list.find(".email_name[data-email='" + arr[i].toLowerCase().replace('.', '\\.').replace('@', '\\@') + "']");
+								existingElement.css('font-weight', 'bold').css('color','red');
+								setTimeout(function() { existingElement.css('font-weight', '').css('color', ''); }, 1500);
 							}(); // Use a IIFE function to create a new scope so existingElement won't be overriden
 						}
 					}
